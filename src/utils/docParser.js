@@ -1,21 +1,17 @@
 class DocParser {
   constructor() {
-    // Existing constructor code...
     this.formatDetector = new DocFormatDetector();
-    this.navigationManager = new NavigationManager(this.formatDetector);
   }
 
   async parseAll() {
     const format = this.formatDetector.detectFormat();
     const mainStructure = this.parseDocument(document, format.selectors);
     
-    // Initialize navigation
-    await this.navigationManager.initialize();
-    
     // Process sub-pages
     const subPages = [];
     while (true) {
-      const page = await this.navigationManager.processNextPage();
+      // Get the next page from DocumentationManager's navigation instance
+      const page = await window.docManager.navigation.processNextPage();
       if (!page) break;
       
       const pageStructure = this.parseDocument(page.document, format.selectors);

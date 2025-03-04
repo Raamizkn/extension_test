@@ -5,8 +5,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'DOCS_PARSED':
       currentDocumentation = {
         url: message.pageUrl,
-        tabId: sender.tab.id
+        tabId: sender.tab.id,
+        outline: message.outline
       };
+      // Notify popup that documentation is ready
+      chrome.runtime.sendMessage({
+        type: 'PROCESSING_STATUS',
+        status: 'complete',
+        outline: message.outline
+      });
+      break;
+
+    case 'PROCESSING_ERROR':
+      console.error('Documentation processing error:', message.error);
+      chrome.runtime.sendMessage({
+        type: 'PROCESSING_STATUS',
+        status: 'error',
+        message: message.error
+      });
+      break;
+
+    case 'PROCESSING_PROGRESS':
+      chrome.runtime.sendMessage({
+        type: 'PROCESSING_STATUS',
+        status: 'progress',
+        progress: message.progress
+      });
+      break;
+
+    case 'NAVIGATE_SECTION':
+      if (currentDocumentation) {
+        chrome.tabs.sendMessage(
+          currentDocumentation.tabId,
+          { 
+            type: 'NAVIGATE_SECTION', 
+            sectionId: message.sectionId 
+          },
+          (response) => {
+            sendResponse(response);
+          }
+        );
+        return true;
+      }
+      sendResponse({ success: false, error: 'No active documentation' });
       break;
 
     case 'QUERY':

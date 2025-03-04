@@ -126,4 +126,7 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => docManager.initialize());
 } else {
   docManager.initialize();
-} 
+}
+
+// Add after DocumentationManager initialization
+window.docManager = docManager; 

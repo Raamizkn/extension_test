@@ -85,6 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
     }
   });
+
+  // Add new event listeners and functions
+  chrome.runtime.onMessage.addListener((message) => {
+    switch (message.type) {
+      case 'PROCESSING_STATUS':
+        handleProcessingStatus(message);
+        break;
+    }
+  });
 });
 
 function initializeNavigation(container) {
@@ -137,4 +146,50 @@ function updateNavigation(outline) {
     };
     outlineContainer.appendChild(link);
   });
+}
+
+function handleProcessingStatus(message) {
+  const statusContainer = document.querySelector('.status-container') || 
+    createStatusContainer();
+
+  switch (message.status) {
+    case 'error':
+      statusContainer.innerHTML = `
+        <div class="error-message">
+          Error: ${message.message}
+          <button class="retry-button">Retry</button>
+        </div>
+      `;
+      statusContainer.querySelector('.retry-button')?.addEventListener('click', 
+        () => chrome.runtime.sendMessage({ type: 'RETRY_PROCESSING' }));
+      break;
+
+    case 'progress':
+      const { processed, total, failed } = message.progress;
+      const percentage = Math.round((processed / total) * 100);
+      statusContainer.innerHTML = `
+        <div class="progress-container">
+          <div class="progress-bar" style="width: ${percentage}%"></div>
+          <div class="progress-text">
+            Processing: ${processed}/${total} pages
+            ${failed > 0 ? `(${failed} failed)` : ''}
+          </div>
+        </div>
+      `;
+      break;
+
+    case 'complete':
+      statusContainer.innerHTML = '<div class="success-message">Documentation ready</div>';
+      if (message.outline) {
+        updateNavigation(message.outline);
+      }
+      break;
+  }
+}
+
+function createStatusContainer() {
+  const container = document.createElement('div');
+  container.className = 'status-container';
+  document.querySelector('.navigation-container').appendChild(container);
+  return container;
 } 

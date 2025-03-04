@@ -128,28 +128,48 @@ class NavigationManager {
     const { url, depth, retries } = this.pageQueue.shift();
     if (this.visitedPages.has(url) || depth > this.maxDepth) return null;
 
-    this.visitedPages.add(url);
-    const doc = await this.fetchPageWithRetry(url);
-    if (!doc.success) {
-      if (retries < this.maxRetries) {
-        this.pageQueue.push({ url, depth, retries: retries + 1 });
+    try {
+      this.visitedPages.add(url);
+      const response = await this.fetchPageWithRetry(url);
+      
+      if (!response.success) {
+        if (retries < this.maxRetries) {
+          this.pageQueue.push({ url, depth, retries: retries + 1 });
+        }
+        return null;
       }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(response.data, 'text/html');
+      
+      // Update processing status
+      this.processedUrls.set(url, true);
+      
+      // Add new links to queue if within depth limit
+      if (depth < this.maxDepth) {
+        const format = this.formatDetector.detectFormat();
+        const newLinks = await this.collectDocumentationLinks(format.selectors);
+        
+        newLinks.forEach(link => {
+          if (!this.visitedPages.has(link)) {
+            this.pageQueue.push({ url: link, depth: depth + 1, retries: 0 });
+          }
+        });
+      }
+
+      // Notify progress
+      this.pageLoadCallbacks.forEach(callback => callback({
+        processed: this.processedUrls.size,
+        total: this.processedUrls.size + this.pageQueue.length,
+        failed: this.failedUrls.size
+      }));
+
+      return { url, document: doc };
+    } catch (error) {
+      console.error(`Error processing page ${url}:`, error);
+      this.failedUrls.set(url, error.message);
       return null;
     }
-
-    // Add new links to queue if within depth limit
-    if (depth < this.maxDepth) {
-      const format = this.formatDetector.detectFormat();
-      const newLinks = await this.collectDocumentationLinks(format.selectors);
-      
-      newLinks.forEach(link => {
-        if (!this.visitedPages.has(link)) {
-          this.pageQueue.push({ url: link, depth: depth + 1, retries: 0 });
-        }
-      });
-    }
-
-    return { url, document: doc.data };
   }
 
   async navigateToSection(sectionId) {
