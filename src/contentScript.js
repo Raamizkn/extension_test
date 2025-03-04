@@ -118,6 +118,13 @@ class DocumentationManager {
       return true;
     });
   }
+
+  async retryProcessing() {
+    this.isProcessing = false;
+    this.processingQueue.clear();
+    this.navigation.reset();
+    await this.initialize();
+  }
 }
 
 // Initialize when the page is ready

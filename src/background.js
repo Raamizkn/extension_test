@@ -68,6 +68,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true; // Keep the message channel open for async response
       }
       break;
+
+    case 'RETRY_PROCESSING':
+      if (currentDocumentation) {
+        chrome.tabs.sendMessage(
+          currentDocumentation.tabId,
+          { type: 'RETRY_PROCESSING' }
+        );
+      }
+      break;
   }
 });
 
